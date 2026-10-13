@@ -1,0 +1,42 @@
+window { background: #111b20; color: #ecf1ed; }
+headerbar { background: #16252b; border-bottom: 1px solid #304046; }
+.title { font-size: 27px; font-weight: 800; letter-spacing: 2px; }
+.heading { font-size: 22px; font-weight: 700; }
+.muted { color: #afc2c3; }
+.caption { font-size: 12px; color: #afc2c3; }
+.table { background: #1b3d38; border: 1px solid #426359; border-radius: 24px; padding: 20px; }
+.seat { background: #142b2a; border: 1px solid #3b5953; border-radius: 14px; padding: 14px; }
+.active { border: 2px solid #e1be76; }
+.controls { background: #1a2b31; border-radius: 14px; padding: 16px; }
+.controls .muted, .controls .caption,
+.controls button, .controls spinbutton, .controls spinbutton text,
+.controls dropdown { color: #ffffff; }
+.controls button { background: #24373e; }
+.controls button.suggested-action { background: #365e54; color: #ffffff; }
+.controls spinbutton text, .controls spinbutton button { background: #24373e; }
+.controls spinbutton button, .controls spinbutton button image { color: #ffffff; }
+.controls spinbutton button image { -gtk-icon-filter: none; }
+.sidebar { background: #16252b; border-radius: 16px; padding: 16px; }
+button { border-radius: 9px; padding: 9px 15px; }
+button.suggested-action { background: #e1be76; color: #15231e; font-weight: 700; }
+.card { background: #faf5ea; border: 2px solid #e2dace; border-radius: 12px; padding: 9px; color: #2e2435; }
+.card.purple { border-color: #7136a2; }
+.card.pink { border-color: #ae2f69; }
+.card.orange { border-color: #a54809; }
+.card.brown { border-color: #704022; }
+.card:disabled { opacity: 0.8; }
+.card:hover { border-color: #e1be76; }
+.card.selected { border: 3px solid #e1be76; background: #fff0c9; }
+.card .rank { font-size: 32px; font-weight: 800; }
+.card .suit { font-size: 12px; font-weight: 700; }
+.card .value { font-size: 11px; color: #5a5550; }
+.card .trump-marker { font-size: 22px; font-weight: 800; color: #1764d1; }
+.card.purple .rank, .card.purple .suit { color: #7136a2; }
+.card.pink .rank, .card.pink .suit { color: #ae2f69; }
+.card.orange .rank, .card.orange .suit { color: #a54809; }
+.card.brown .rank, .card.brown .suit { color: #704022; }
+.card.koor .rank, .card.koor .suit { color: #254c45; }
+.error { color: #ffc4ae; }
+.score { font-size: 16px; font-weight: 700; }
+textview, textview text { background: #16252b; color: #c8d6d3; }
+dropdown, spinbutton { color: #ecf1ed; background: #24373e; }
