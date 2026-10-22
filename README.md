@@ -3,9 +3,40 @@
 A Rust implementation of the game in [RULES.md](RULES.md): one human plays against
 Ada, Linus, and Grace, with hidden partnerships and 180 points per hand.
 
-The Linux frontend uses native GTK 4 widgets. macOS (AppKit / `objc2-app-kit`) and
-Windows (`windows`) have explicit placeholders for implementation on those hosts.
-The engine and four-computer CLI work without GTK.
+The Linux frontend uses native GTK 4 widgets, and the macOS frontend uses native
+AppKit widgets through `objc2-app-kit`. Windows (`windows`) has a placeholder for
+implementation on that host. The engine and four-computer CLI work without GUI
+dependencies.
+
+## Run on macOS
+
+Install Rust and the Xcode command-line tools (`xcode-select --install`), then run:
+
+```sh
+cargo run
+```
+
+The AppKit window includes colored cards, bidding, five-card discard selection,
+trump and partner selectors, legal-card controls, cumulative scores, a scrolling
+action log, and the rules. Computer turns are paced, with a longer pause after
+each trick. The log groups plays by trick, and hand cards retain suit colors when
+disabled. Blue `*` and `P` markers identify trump and the called partner card;
+the contract shows colored trump and green/red kitty status. **Deal next round**
+continues after scoring. The native menu supports
+**⌘Q** to quit, **⌘W** to close, and **⌘M** to minimize. The window follows the
+system's light or dark appearance.
+
+To build a Finder-launchable application bundle on macOS 11 or newer:
+
+```sh
+./scripts/build-macos-app.sh
+open target/release/Koor.app
+```
+
+The bundle is built for the Mac's current architecture. It can be copied to
+Applications. Learning state is saved in
+`~/Library/Application Support/koor/learning.json`; `--learning-file` and
+`--no-learning` also work when launching the executable with arguments.
 
 ## Run on Linux
 
@@ -30,7 +61,7 @@ cargo run --no-default-features -- --cli --rounds 1 --seed 42 --no-learning --tr
 cargo run --no-default-features -- --cli --rounds 1000 --learning-file ./learning.json --quiet
 ```
 
-`--no-default-features` removes the GTK dependency entirely. Seats are numbered
+`--no-default-features` removes all GUI dependencies. Seats are numbered
 0 through 3 in clockwise order. A seed plus `--no-learning` reproduces a game
 with the locked dependency versions. `--help` lists the options.
 
@@ -84,7 +115,7 @@ cumulative scores last for the current session.
 - `ai`: heuristics working exclusively from player views.
 - `learning`: persisted strategy selection and rewards.
 - `session`: automation, random seed, totals, learning lifecycle.
-- `ui`: common `Frontend` interface, CLI, GTK, and platform placeholders.
+- `ui`: common `Frontend` interface, CLI, GTK, AppKit, and Windows placeholder.
 
 ```sh
 cargo test
@@ -97,6 +128,18 @@ Engine tests cover special-card ranking and following suit, auctions, validation
 hidden partner reveal, kitty scoring, successful and failed bids, solo play,
 seeded complete games, deterministic simulations, human turn pauses, and learning
 persistence.
+
+On a macOS desktop, an AppKit interaction test drives the real native controls
+through a complete round, checks scoring and the next deal, validates all-pass
+redealing, opens the rules, resizes the window, and checks timer cleanup:
+
+```sh
+cargo test --test macos_gui -- --ignored
+```
+
+It uses a dedicated harness because AppKit must run on the process's main
+thread. It skips opening windows during ordinary `cargo test` runs. Setting
+`KOOR_SCREENSHOT_DIR` to an existing directory saves phase previews.
 
 An additional GTK interaction test drives the real bid, discard, declaration,
 card, and next-round buttons through a complete game. It is ignored by default

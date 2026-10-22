@@ -1,4 +1,7 @@
-use super::Frontend;
+use super::{
+    Frontend,
+    presentation::{card_marker, format_log},
+};
 use crate::{
     cards::{Card, Suit},
     game::{Action, NAMES, Phase, View},
@@ -116,25 +119,6 @@ fn suit_color(suit: Suit) -> &'static str {
         Suit::Orange => "#a54809",
         Suit::Brown => "#704022",
     }
-}
-
-fn format_log(events: &[String]) -> String {
-    let mut text = String::new();
-    for (index, event) in events.iter().enumerate() {
-        if index > 0 {
-            text.push('\n');
-            // Keep each trick (including partner reveals and its result) together.
-            let previous = &events[index - 1];
-            if previous.contains(" takes trick ")
-                || previous.contains(" take trick ")
-                || previous.contains(" as partner. The kitty ")
-            {
-                text.push('\n');
-            }
-        }
-        text.push_str(event);
-    }
-    text
 }
 
 impl Table {
@@ -470,15 +454,8 @@ impl Table {
             let card = *card;
             let button = gtk::Button::new();
             let content = card_content(card, view.trump);
-            let is_trump = view.trump.is_some_and(|trump| card.suit(trump) == trump);
-            let is_partner = view.partner_card == Some(card);
             let marker = label(
-                match (is_trump, is_partner) {
-                    (true, true) => "* P",
-                    (true, false) => "*",
-                    (false, true) => "P",
-                    (false, false) => "",
-                },
+                card_marker(card, view.trump, view.partner_card),
                 "trump-marker",
             );
             marker.set_vexpand(true);

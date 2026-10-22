@@ -4,8 +4,10 @@ use crate::session::Session;
 pub mod cli;
 #[cfg(all(target_os = "linux", feature = "gui"))]
 pub mod linux;
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", feature = "gui"))]
 mod macos;
+#[cfg(all(feature = "gui", any(target_os = "linux", target_os = "macos")))]
+mod presentation;
 #[cfg(target_os = "windows")]
 mod windows;
 
@@ -18,7 +20,7 @@ pub fn native(session: Session) -> Result<(), String> {
     {
         linux::GtkFrontend.run(session)
     }
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", feature = "gui"))]
     {
         macos::MacFrontend.run(session)
     }
@@ -28,11 +30,14 @@ pub fn native(session: Session) -> Result<(), String> {
     }
     #[cfg(not(any(
         all(target_os = "linux", feature = "gui"),
-        target_os = "macos",
+        all(target_os = "macos", feature = "gui"),
         target_os = "windows"
     )))]
     {
         let _ = session;
-        Err("Native UI unavailable. Use --cli, or build on Linux with the gui feature.".into())
+        Err(
+            "Native UI unavailable. Use --cli, or build on Linux or macOS with the gui feature."
+                .into(),
+        )
     }
 }
