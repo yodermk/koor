@@ -6,9 +6,9 @@ pub mod cli;
 pub mod linux;
 #[cfg(all(target_os = "macos", feature = "gui"))]
 mod macos;
-#[cfg(all(feature = "gui", any(target_os = "linux", target_os = "macos")))]
+#[cfg(feature = "gui")]
 mod presentation;
-#[cfg(target_os = "windows")]
+#[cfg(all(target_os = "windows", feature = "gui"))]
 mod windows;
 
 pub trait Frontend {
@@ -24,19 +24,19 @@ pub fn native(session: Session) -> Result<(), String> {
     {
         macos::MacFrontend.run(session)
     }
-    #[cfg(target_os = "windows")]
+    #[cfg(all(target_os = "windows", feature = "gui"))]
     {
         windows::WindowsFrontend.run(session)
     }
     #[cfg(not(any(
         all(target_os = "linux", feature = "gui"),
         all(target_os = "macos", feature = "gui"),
-        target_os = "windows"
+        all(target_os = "windows", feature = "gui")
     )))]
     {
         let _ = session;
         Err(
-            "Native UI unavailable. Use --cli, or build on Linux or macOS with the gui feature."
+            "Native UI unavailable. Use --cli, or build on Linux, macOS, or Windows with the gui feature."
                 .into(),
         )
     }
