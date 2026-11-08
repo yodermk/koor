@@ -28,6 +28,10 @@ use std::{
 
 pub struct MacFrontend;
 
+const CARD_WIDTH: f64 = 78.0;
+const CARD_HEIGHT: f64 = 96.0;
+const HAND_SPACING: f64 = 8.0;
+
 impl Frontend for MacFrontend {
     fn run(self, session: Session) -> Result<(), String> {
         let mtm = MainThreadMarker::new().ok_or("AppKit must run on the main thread.")?;
@@ -87,6 +91,16 @@ define_class!(
     }
 
     unsafe impl NSWindowDelegate for Controller {
+        #[unsafe(method(windowDidResize:))]
+        fn window_did_resize(&self, _notification: &NSNotification) {
+            if let Some(table) = self.ivars().table.get() {
+                let cards = table.hand.arrangedSubviews().iter()
+                    .flat_map(|row| row.subviews().to_vec())
+                    .collect();
+                table.arrange_hand(cards);
+            }
+        }
+
         #[unsafe(method(windowWillClose:))]
         fn window_will_close(&self, _notification: &NSNotification) {
             self.stop_timer();
@@ -469,48 +483,35 @@ impl Controller {
             } else {
                 let empty = label(self.mtm(), "·", 28.0, false);
                 empty.setAlignment(NSTextAlignment::Center);
-                size(&empty, 78.0, 96.0);
+                size(&empty, CARD_WIDTH, CARD_HEIGHT);
                 slot.addArrangedSubview(&empty);
             }
             table.trick.addArrangedSubview(&slot);
         }
 
-        clear(&table.hand);
         let selected = self.ivars().selected.borrow();
-        let columns = if view.hand.len() > 8 {
-            view.hand.len().div_ceil(2)
-        } else {
-            8
-        };
-        for cards in view.hand.chunks(columns) {
-            let row = stack(self.mtm(), true, 8.0);
-            for card in cards {
-                let index = view
-                    .hand
-                    .iter()
-                    .position(|candidate| candidate == card)
-                    .unwrap();
-                let button = card_button(
-                    self,
-                    *card,
-                    view.trump,
-                    card_marker(*card, view.trump, view.partner_card),
-                );
-                button.setTag(index as isize);
-                let discarding = view.phase == Phase::Discard && view.turn == Some(0);
-                button.setEnabled(discarding || view.legal_cards.contains(card));
-                if discarding {
-                    button.setButtonType(NSButtonType::PushOnPushOff);
-                    button.setState(if selected.contains(card) {
-                        NSControlStateValueOn
-                    } else {
-                        NSControlStateValueOff
-                    });
-                }
-                row.addArrangedSubview(&button);
+        let mut buttons = Vec::with_capacity(view.hand.len());
+        for (index, card) in view.hand.iter().enumerate() {
+            let button = card_button(
+                self,
+                *card,
+                view.trump,
+                card_marker(*card, view.trump, view.partner_card),
+            );
+            button.setTag(index as isize);
+            let discarding = view.phase == Phase::Discard && view.turn == Some(0);
+            button.setEnabled(discarding || view.legal_cards.contains(card));
+            if discarding {
+                button.setButtonType(NSButtonType::PushOnPushOff);
+                button.setState(if selected.contains(card) {
+                    NSControlStateValueOn
+                } else {
+                    NSControlStateValueOff
+                });
             }
-            table.hand.addArrangedSubview(&row);
+            buttons.push(button.into_super().into_super());
         }
+        table.arrange_hand(buttons);
         drop(selected);
         self.render_controls(&view);
     }
@@ -687,6 +688,23 @@ struct Table {
 }
 
 impl Table {
+    fn arrange_hand(&self, cards: Vec<Retained<NSView>>) {
+        // Remove the old rows before measuring so their required widths cannot
+        // keep the table wider than the resized window.
+        clear(&self.hand);
+        self.window.contentView().unwrap().layoutSubtreeIfNeeded();
+        let columns = ((self.hand.bounds().size.width + HAND_SPACING) / (CARD_WIDTH + HAND_SPACING))
+            .floor()
+            .max(1.0) as usize;
+        for cards in cards.chunks(columns) {
+            let row = stack(self.hand.mtm(), true, HAND_SPACING);
+            for card in cards {
+                row.addArrangedSubview(card);
+            }
+            self.hand.addArrangedSubview(&row);
+        }
+    }
+
     fn new(controller: &Controller) -> Self {
         let mtm = controller.mtm();
         let window = new_window(mtm, "Koor 😛", 1200.0, 900.0);
@@ -779,9 +797,18 @@ impl Table {
             12.0,
             true,
         ));
-        let hand = stack(mtm, false, 8.0);
+        let hand = stack(mtm, false, HAND_SPACING);
         hand.setAlignment(NSLayoutAttribute::Leading);
+        // Allow a resize to make the hand narrower than its current rows; the
+        // window delegate then reflows them to fit the new width.
+        hand.setClippingResistancePriority_forOrientation(
+            NSLayoutPriorityDefaultLow,
+            NSLayoutConstraintOrientation::Horizontal,
+        );
         main.addArrangedSubview(&hand);
+        hand.widthAnchor()
+            .constraintEqualToAnchor(&main.widthAnchor())
+            .setActive(true);
         hand.heightAnchor()
             .constraintGreaterThanOrEqualToConstant(200.0)
             .setActive(true);
@@ -1161,7 +1188,7 @@ fn card_button(
         "{card} · {} points",
         card.points()
     ))));
-    size(&button, 78.0, 96.0);
+    size(&button, CARD_WIDTH, CARD_HEIGHT);
     button.into_super()
 }
 

@@ -225,6 +225,71 @@ mod native {
         }
     }
 
+    fn assert_hand_rows(controller: &Controller, expected: &[usize]) {
+        pump_events();
+        let table = controller.table();
+        table.window.contentView().unwrap().layoutSubtreeIfNeeded();
+        let rows = table.hand.arrangedSubviews();
+        let counts: Vec<_> = rows.iter().map(|row| row.subviews().len()).collect();
+        assert_eq!(
+            counts,
+            expected,
+            "hand width: {}",
+            table.hand.bounds().size.width
+        );
+        let mut tags = Vec::new();
+        for row in rows {
+            for card in row.subviews() {
+                let card = card.downcast::<NSButton>().unwrap();
+                tags.push(card.tag());
+                let frame = card.convertRect_toView(card.bounds(), Some(&table.hand));
+                assert!(frame.origin.x >= 0.0);
+                assert!(frame.origin.x + frame.size.width <= table.hand.bounds().size.width + 0.5);
+                assert!(frame.origin.y >= 0.0);
+                assert!(
+                    frame.origin.y + frame.size.height <= table.hand.bounds().size.height + 0.5
+                );
+            }
+        }
+        assert_eq!(
+            tags,
+            (0..expected.iter().sum::<usize>() as isize).collect::<Vec<_>>()
+        );
+    }
+
+    fn assert_responsive_hand(controller: &Controller, cards: usize) {
+        let table = controller.table();
+        table.window.contentView().unwrap().layoutSubtreeIfNeeded();
+        let reserved_width = table.window.contentView().unwrap().bounds().size.width
+            - table.hand.bounds().size.width;
+        // Include the exact fit boundary, then shrink and grow without rendering
+        // the game again. Resizing must retain card order and control state.
+        let one_row_width = reserved_width + cards as f64 * 78.0 + (cards - 1) as f64 * 8.0;
+        for (width, rows) in [
+            (one_row_width, vec![cards]),
+            (one_row_width - 1.0, vec![cards - 1, 1]),
+            (one_row_width + 1.0, vec![cards]),
+            (1080.0, vec![8, cards - 8]),
+            (
+                1200.0,
+                if cards == 10 {
+                    vec![10]
+                } else {
+                    vec![10, cards - 10]
+                },
+            ),
+        ] {
+            table.window.setContentSize(NSSize::new(width, 900.0));
+            assert_hand_rows(controller, &rows);
+            for card in &controller.ivars().session.borrow().view(0).hand {
+                assert_eq!(
+                    hand_button(controller, *card).state() == NSControlStateValueOn,
+                    controller.ivars().selected.borrow().contains(card),
+                );
+            }
+        }
+    }
+
     pub(super) fn run() {
         let mtm = MainThreadMarker::new().expect("native test runs on the process main thread");
         autoreleasepool(|_| {
@@ -240,6 +305,8 @@ mod native {
             controller.render();
             controller.table().window.makeKeyAndOrderFront(None);
             assert_card_rendering(&controller);
+            assert_hand_rows(&controller, &[10]);
+            assert_responsive_hand(&controller, 10);
             controller.start_timer();
             let mut discarded = false;
             let mut declared = false;
@@ -281,11 +348,12 @@ mod native {
                         click_card(&controller, discards[0]);
                         assert!(!control(&controller, "Discard selected cards").isEnabled());
                         click_card(&controller, discards[0]);
-                        // Check that resizing preserves both rows of the 15-card hand.
+                        assert_responsive_hand(&controller, 15);
                         controller
                             .table()
                             .window
                             .setContentSize(NSSize::new(1080.0, 850.0));
+                        assert_hand_rows(&controller, &[8, 7]);
                         screenshot(&controller, "discard");
                         click(&controller, "Discard selected cards");
                         discarded = true;
