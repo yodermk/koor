@@ -40,3 +40,6 @@ button.suggested-action { background: #e1be76; color: #15231e; font-weight: 700;
 .score { font-size: 16px; font-weight: 700; }
 textview, textview text { background: #16252b; color: #c8d6d3; }
 dropdown, spinbutton { color: #ecf1ed; background: #24373e; }
+/* Breeze's negative scrollbar margins need at least 8px to measure >= 0. */
+scrollbar.vertical slider { min-width: 8px; }
+scrollbar.horizontal slider { min-height: 8px; }

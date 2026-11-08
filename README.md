@@ -4,9 +4,31 @@ A Rust implementation of the game in [RULES.md](RULES.md): one human plays again
 Ada, Linus, and Grace, with hidden partnerships and 180 points per hand.
 
 The Linux frontend uses native GTK 4 widgets, and the macOS frontend uses native
-AppKit widgets through `objc2-app-kit`. Windows (`windows`) has a placeholder for
-implementation on that host. The engine and four-computer CLI work without GUI
+AppKit widgets through `objc2-app-kit`. Windows uses native Win32 controls through
+the `windows` crate. The engine and four-computer CLI work without GUI
 dependencies.
+
+## Run on Windows
+
+Install Rust with the MSVC toolchain and Visual Studio Build Tools with the
+**Desktop development with C++** workload, then run:
+
+```powershell
+cargo run
+```
+
+The native window includes bidding, five-card discard selection, trump and partner
+dropdowns, colored cards with suit names and trump/partner markers, legal-card
+controls, cumulative scores, a scrolling trick log, and a separate rules window.
+The info bar highlights trump in its suit color and kitty status in green or red.
+Computer turns are paced, with a longer pause after each trick. **Deal next round**
+continues after scoring; all-pass auctions redeal automatically. Use Tab and
+Shift+Tab to navigate, Space to activate a button, or Alt+H to open the rules.
+The window supports resizing and monitor DPI changes.
+
+`cargo build --release` creates `target\release\koor.exe`. Learning state is saved
+in `%LOCALAPPDATA%\Koor\learning.json` (or `$XDG_DATA_HOME/koor/learning.json` if
+set). `--learning-file` and `--no-learning` also work on Windows.
 
 ## Run on macOS
 
@@ -115,7 +137,7 @@ cumulative scores last for the current session.
 - `ai`: heuristics working exclusively from player views.
 - `learning`: persisted strategy selection and rewards.
 - `session`: automation, random seed, totals, learning lifecycle.
-- `ui`: common `Frontend` interface, CLI, GTK, AppKit, and Windows placeholder.
+- `ui`: common `Frontend` interface, CLI, GTK, AppKit, and Win32.
 
 ```sh
 cargo test
@@ -129,17 +151,17 @@ hidden partner reveal, kitty scoring, successful and failed bids, solo play,
 seeded complete games, deterministic simulations, human turn pauses, and learning
 persistence.
 
-On a macOS desktop, an AppKit interaction test drives the real native controls
-through a complete round, checks scoring and the next deal, validates all-pass
-redealing, opens the rules, resizes the window, and checks timer cleanup:
+On a Windows desktop, a native interaction test drives the real bid, discard,
+declaration, card, and next-round controls through a complete round. It also
+checks all-pass redealing, rules window reuse/close, resizing, card drawing,
+and native resource cleanup:
 
 ```sh
-cargo test --test macos_gui -- --ignored
+cargo test --lib windows_controls_play_complete_rounds -- --ignored --test-threads=1
 ```
 
-It uses a dedicated harness because AppKit must run on the process's main
-thread. It skips opening windows during ordinary `cargo test` runs. Setting
-`KOOR_SCREENSHOT_DIR` to an existing directory saves phase previews.
+It skips opening windows during ordinary `cargo test` runs. Setting
+`KOOR_SCREENSHOT_DIR` to an existing directory saves BMP phase previews.
 
 An additional GTK interaction test drives the real bid, discard, declaration,
 card, and next-round buttons through a complete game. It is ignored by default
